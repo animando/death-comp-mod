@@ -12,4 +12,5 @@ public class CommandConstants {
 	public interface Commands {
 		static final String DEATHCOMP = "deathcomp";
 	}
+
 }

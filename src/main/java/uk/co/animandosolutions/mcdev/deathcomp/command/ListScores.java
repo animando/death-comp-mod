@@ -19,7 +19,10 @@ import net.minecraft.server.command.ServerCommandSource;
 import uk.co.animandosolutions.mcdev.deathcomp.utils.Logger;
 
 public class ListScores implements CommandDefinition {
-	static final BigDecimal TICKS_PER_HOUR = new BigDecimal(72000);
+	private static final String TS_DEATHS = "ts_Deaths";
+	private static final String TS_PLAY_TIME = "ts_PlayTime";
+	private static final BigDecimal TICKS_PER_HOUR = new BigDecimal(72000);
+	
 
 	static record Scores(String playerName, int deaths, double playTime, Double quotient) {
 		public String toString() {
@@ -29,36 +32,38 @@ public class ListScores implements CommandDefinition {
 
 	@Override
 	public int execute(CommandContext<ServerCommandSource> context) {
-		try {
+		MinecraftServer server = context.getSource().getServer();
+		ServerScoreboard scoreboard = server.getScoreboard();
+		ScoreboardObjective deathCountObjective = scoreboard.getObjectives().stream()
+				.filter(t -> t.getName().equals(TS_DEATHS)).findFirst().orElse(null);
+		ScoreboardObjective playTimeObjective = scoreboard.getObjectives().stream()
+				.filter(t -> t.getName().equals(TS_PLAY_TIME)).findFirst().orElse(null);
 
-			MinecraftServer server = context.getSource().getServer();
-			ServerScoreboard scoreboard = server.getScoreboard();
-			ScoreboardObjective deathCountObjective = scoreboard.getObjectives().stream()
-					.filter(t -> t.getName().equals("ts_Deaths")).findFirst().orElseThrow();
-			ScoreboardObjective playTimeObjective = scoreboard.getObjectives().stream()
-					.filter(t -> t.getName().equals("ts_PlayTime")).findFirst().orElseThrow();
-
-			var whitelist = new HashSet<>(Arrays.asList(server.getPlayerManager().getWhitelistedNames()));
-			var scores = scoreboard.getKnownScoreHolders().stream()
-					.filter(it -> whitelist.contains(it.getNameForScoreboard()))
-					.map(getPlayerScores(scoreboard, deathCountObjective, playTimeObjective))
-					.filter(it -> it.playTime() > 0).sorted(this::sortScores).toList();
-
-			sendMessage(context.getSource(), "Death Competition Standings");
-			scores.forEach(it -> {
-				if (it.quotient() == null) {
-					sendMessage(context.getSource(), format("%s: Error", it.playerName));
-				} else {
-					sendMessage(context.getSource(),
-							format("%s [deaths=%s, playtime=%.2f hours]", it.playerName, it.deaths, it.playTime));
-				}
-			});
-
-			return 1;
-		} catch (Exception e) {
-			Logger.LOGGER.error("Error", e);
+		if (deathCountObjective == null || playTimeObjective == null) {
+			sendMessage(context.getSource(), "Track Raw Statistics datapack is required by deathcomp");
 			return -1;
 		}
+
+		var whitelist = new HashSet<>(Arrays.asList(server.getPlayerManager().getWhitelistedNames()));
+		var scores = scoreboard.getKnownScoreHolders().stream()
+				.filter(it -> whitelist.contains(it.getNameForScoreboard()))
+				.map(getPlayerScores(scoreboard, deathCountObjective, playTimeObjective))
+				.filter(it -> it.playTime() > 0).sorted(this::sortScores).toList();
+
+		sendMessage(context.getSource(), "Death Competition Standings");
+		if (scores.size() == 0) {
+			sendMessage(context.getSource(), "<empty>");
+		}
+		scores.forEach(it -> {
+			if (it.quotient() == null) {
+				sendMessage(context.getSource(), format("%s: Error", it.playerName));
+			} else {
+				sendMessage(context.getSource(),
+						format("%s [deaths=%s, playtime=%.2f hours]", it.playerName, it.deaths, it.playTime));
+			}
+		});
+
+		return 1;
 	}
 
 	private Function<ScoreHolder, Scores> getPlayerScores(final ServerScoreboard scoreboard,
@@ -83,12 +88,7 @@ public class ListScores implements CommandDefinition {
 
 	@Override
 	public String getCommand() {
-		return "deathcomp";
-	}
-
-	@Override
-	public String getPermission() {
-		return "deathcomp.list";
+		return CommandConstants.Commands.DEATHCOMP;
 	}
 
 	private int sortScores(Scores score1, Scores score2) {

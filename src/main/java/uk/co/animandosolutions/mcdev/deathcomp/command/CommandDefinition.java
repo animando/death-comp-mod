@@ -42,10 +42,6 @@ public interface CommandDefinition {
 		return getOptionalArgument(context, argumentName, clazz);
 	}
 	
-	default SuggestionProvider<ServerCommandSource> suggestionProvider() {
-		return null;
-	}
-	
 	default String getPermission() {
 		return null;
 	};
