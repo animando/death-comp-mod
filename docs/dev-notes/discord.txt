@@ -1,0 +1,3 @@
+https://docs.discord4j.com/
+
+https://maisyt.hashnode.dev/gradle-tips-for-minecraft-fabric-mod

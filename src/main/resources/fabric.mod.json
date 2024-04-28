@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "death-comp",
+	"version": "${version}",
+	"name": "Death Comp Mod",
+	"description": "Lists players in order of deaths per time played on the server",
+	"authors": [
+		"Graham King"
+	],
+	"contact": {
+		"homepage": "https://github.com/animando/death-comp-mod"
+	},
+	"license": "MIT",
+	"icon": "assets/death-comp/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"uk.co.animandosolutions.mcdev.deathcomp.DeathCompMod"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.15.7",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*",
+		"fabric-permissions-api-v0": "*"
+	},
+    "custom": {
+      "mc-publish": {
+        "modrinth": "h55IKPRF"
+      }
+    }
+}

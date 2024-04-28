@@ -1,0 +1,5 @@
+https://www.reddit.com/r/fabricmc/comments/1281x37/how_to_implement_config_files_in_my_fabric_mod/
+https://docs.wispforest.io/owo/config/getting-started/
+
+weird issue with the annotation process
+run build with annotationProcessor dependency and generatedSourceOutputDirectory setting, then switch out the annotationProcessor dependency and update the source sets to include generated source
