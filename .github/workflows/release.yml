@@ -1,0 +1,37 @@
+name: release
+
+on:
+    release:
+        types: [published]
+
+env:                                              
+  MODRINTH_TOKEN: ${{ secrets.PUBLISH_MODRINTH_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.PUBLISH_GITHUB_TOKEN }}           
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v2
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v1
+              with:
+                  java-version: 17
+
+            - name: Build release
+              run: ./gradlew build
+
+            - name: Publish (Modrinth/GitHub)
+              uses: Kir-Antipov/mc-publish@v3.3.0
+              with:
+                modrinth-token: "${{env.MODRINTH_TOKEN}}"
+                modrinth-featured: true
+
+                github-token: "${{env.GITHUB_TOKEN}}"
+        
+                files: |
+                  build/libs/*-[0-9].[0-9].[0-9].jar
+        
+                loaders: fabric
