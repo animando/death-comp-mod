@@ -51,6 +51,9 @@ jobs:
           
           github-token: "${{env.GITHUB_TOKEN}}"
 
+          files: |
+            build/libs/*-[0-9].[0-9].[0-9].jar
+
           name: "${{env.RELEASE_NAME}}"                             
           version: "${{env.VERSION}}"
           version-type: release
