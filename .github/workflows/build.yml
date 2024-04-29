@@ -12,7 +12,6 @@ env:
   MODRINTH_TOKEN: ${{ secrets.PUBLISH_MODRINTH_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.PUBLISH_GITHUB_TOKEN }}           
 
-
 jobs:
   build:
     permissions:
@@ -42,3 +41,21 @@ jobs:
 
       - name: build
         run: ./gradlew build
+
+      - name: Publish (CurseForge/Modrinth/GitHub)
+        if: ${{ matrix.java == '21' }} # Only upload artifacts built from latest java
+        uses: Kir-Antipov/mc-publish@v3.3.0
+        with:
+          modrinth-token: "${{env.MODRINTH_TOKEN}}"
+          modrinth-featured: true
+          
+          github-token: "${{env.GITHUB_TOKEN}}"
+
+          name: "${{env.RELEASE_NAME}}"                             
+          version: "${{env.VERSION}}"
+          version-type: release
+          #changelog-file: CHANGELOG.md
+
+          loaders: fabric
+          game-versions: "${{env.MINECRAFT_VERSION}}"
+          java: "${{env.JAVA_VERSION}}"
