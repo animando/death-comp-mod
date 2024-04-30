@@ -29,7 +29,7 @@ public class ListScores implements CommandDefinition {
     private static final String TS_PLAY_TIME = "ts_PlayTime";
     private static final BigDecimal TICKS_PER_HOUR = new BigDecimal(72000);
 
-    static record ScorePerformance(Scores scores, double relativeDelta, double absoluteDelta) {
+    static record ScorePerformance(Scores scores, double relativeDelta) {
 
     }
 
@@ -37,9 +37,6 @@ public class ListScores implements CommandDefinition {
 
         @Override
         public int compare(ScorePerformance o1, ScorePerformance o2) {
-            if (o1.scores().deaths() == 0 || o2.scores().deaths() == 0) {
-                return Double.valueOf(o2.absoluteDelta()).compareTo(Double.valueOf(o1.absoluteDelta()));
-            }
 
             return Double.valueOf(o2.relativeDelta()).compareTo(Double.valueOf(o1.relativeDelta()));
         }
@@ -74,13 +71,12 @@ public class ListScores implements CommandDefinition {
                         .collect(collectingAndThen(toList(), StatsUtils::computeMedian));
                 var medianPlayTime = scores.stream().map(Scores::playTime)
                         .collect(collectingAndThen(toList(), StatsUtils::computeMedian));
-                var averageDeathsPerPlayTime = new BigDecimal(medianDeaths).divide(new BigDecimal(medianPlayTime),
-                        MathContext.DECIMAL128);
-                Logger.LOGGER.info("Deaths per playtime : " + averageDeathsPerPlayTime.doubleValue());
+                var averageDeathsPerHour = new BigDecimal(medianDeaths)
+                        .divide(new BigDecimal(medianPlayTime), MathContext.DECIMAL128).doubleValue();
+                Logger.LOGGER.info("Deaths per playtime : " + averageDeathsPerHour);
 
-                var sortedScores = scores.stream().map(calculatePerformance(averageDeathsPerPlayTime.doubleValue()))
+                var sortedScores = scores.stream().map(calculatePerformance(averageDeathsPerHour))
                         .sorted(new DeltaDeathRateComparator()).toList();
-                
 
                 publishScores(context, sortedScores);
 
@@ -92,12 +88,14 @@ public class ListScores implements CommandDefinition {
         }
     }
 
-    private Function<Scores, ScorePerformance> calculatePerformance(double expectedDeathRate) {
+    private Function<Scores, ScorePerformance> calculatePerformance(double averageDeathsPerHour) {
         return it -> {
-            var expectedDeaths = expectedDeathRate * it.playTime();
-            var relativeDelta = it.deaths() / expectedDeaths;
-            var absoluteDelta = it.deaths() - expectedDeaths;
-            return new ScorePerformance(it, relativeDelta, absoluteDelta);
+            var deaths = it.deaths() + 1;
+            var playTime = it.playTime() + (1 / averageDeathsPerHour);
+
+            var expectedDeaths = averageDeathsPerHour * playTime;
+            var relativeDelta = deaths / expectedDeaths;
+            return new ScorePerformance(it, relativeDelta);
         };
     }
 
