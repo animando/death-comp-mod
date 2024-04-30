@@ -29,27 +29,20 @@ public class ListScores implements CommandDefinition {
     private static final String TS_PLAY_TIME = "ts_PlayTime";
     private static final BigDecimal TICKS_PER_HOUR = new BigDecimal(72000);
 
-    static final class DeltaDeathRateComparator implements Comparator<Scores> {
-        private double expectedDeathRate;
+    static record ScorePerformance(Scores scores, double relativeDelta, double absoluteDelta) {
 
-        public DeltaDeathRateComparator(final double expectedDeathRate) {
-            this.expectedDeathRate = expectedDeathRate;
-        }
+    }
+
+    static final class DeltaDeathRateComparator implements Comparator<ScorePerformance> {
 
         @Override
-        public int compare(Scores o1, Scores o2) {
-            var delta1 = createDelta(o1);
-            var delta2 = createDelta(o2);
+        public int compare(ScorePerformance o1, ScorePerformance o2) {
+            if (o1.scores().deaths() == 0 || o2.scores().deaths() == 0) {
+                return Double.valueOf(o2.absoluteDelta()).compareTo(Double.valueOf(o1.absoluteDelta()));
+            }
 
-            return Double.valueOf(delta2).compareTo(Double.valueOf(delta1));
-
+            return Double.valueOf(o2.relativeDelta()).compareTo(Double.valueOf(o1.relativeDelta()));
         }
-
-        private double createDelta(Scores scores) {
-            var expectedDeaths = this.expectedDeathRate * scores.playTime();
-            return scores.deaths() - expectedDeaths;
-        }
-
     }
 
     @Override
@@ -82,11 +75,13 @@ public class ListScores implements CommandDefinition {
                 var medianPlayTime = scores.stream().map(Scores::playTime)
                         .collect(collectingAndThen(toList(), StatsUtils::computeMedian));
                 var averageDeathsPerPlayTime = new BigDecimal(medianDeaths).divide(new BigDecimal(medianPlayTime),
-                        MathContext.DECIMAL128); 
+                        MathContext.DECIMAL128);
+                Logger.LOGGER.info("Deaths per playtime : " + averageDeathsPerPlayTime.doubleValue());
 
-                var sortedScores = scores.stream()
-                        .sorted(new DeltaDeathRateComparator(averageDeathsPerPlayTime.doubleValue())).toList();
+                var sortedScores = scores.stream().map(calculatePerformance(averageDeathsPerPlayTime.doubleValue()))
+                        .sorted(new DeltaDeathRateComparator()).toList();
                 
+
                 publishScores(context, sortedScores);
 
                 return 1;
@@ -97,11 +92,22 @@ public class ListScores implements CommandDefinition {
         }
     }
 
-    private void publishScores(CommandContext<ServerCommandSource> context, List<Scores> sortedScores) {
+    private Function<Scores, ScorePerformance> calculatePerformance(double expectedDeathRate) {
+        return it -> {
+            var expectedDeaths = expectedDeathRate * it.playTime();
+            var relativeDelta = it.deaths() / expectedDeaths;
+            var absoluteDelta = it.deaths() - expectedDeaths;
+            return new ScorePerformance(it, relativeDelta, absoluteDelta);
+        };
+    }
+
+    private void publishScores(CommandContext<ServerCommandSource> context, List<ScorePerformance> sortedScores) {
         sendMessage(context.getSource(), "Death Competition Standings");
         sortedScores.forEach(it -> {
             sendMessage(context.getSource(),
-                    format("%s [deaths=%s, playtime=%.2f hours]", it.playerName(), it.deaths(), it.playTime()));
+                    format("%s [deaths=%s, playtime=%.2f hours, deathsPerHour=%.4f]", it.scores().playerName(),
+                            it.scores().deaths(), it.scores().playTime(),
+                            it.scores().deaths() / it.scores().playTime()));
         });
     }
 
@@ -112,15 +118,8 @@ public class ListScores implements CommandDefinition {
                     .map(it -> it.getScore()).map(this::ticksToHours).orElse(0d);
             int deathCount = Optional.ofNullable(scoreboard.getScore(scoreholder, deathCountObjective))
                     .map(it -> it.getScore()).orElse(0);
-            try {
 
-                return new Scores(scoreholder.getNameForScoreboard(), deathCount, playTime);
-            } catch (Exception e) {
-                Logger.LOGGER
-                        .error(format("Error calculating quotient for player %s with playTime %.2f and deathCount %s",
-                                scoreholder.getNameForScoreboard(), playTime, deathCount), e);
-                return new Scores(scoreholder.getNameForScoreboard(), deathCount, playTime);
-            }
+            return new Scores(scoreholder.getNameForScoreboard(), deathCount, playTime);
         };
     }
 
