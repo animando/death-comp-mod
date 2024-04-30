@@ -102,10 +102,8 @@ public class ListScores implements CommandDefinition {
     private void publishScores(CommandContext<ServerCommandSource> context, List<ScorePerformance> sortedScores) {
         sendMessage(context.getSource(), "Death Competition Standings");
         sortedScores.forEach(it -> {
-            sendMessage(context.getSource(),
-                    format("%s [deaths=%s, playtime=%.2f hours, deathsPerHour=%.4f]", it.scores().playerName(),
-                            it.scores().deaths(), it.scores().playTime(),
-                            it.scores().deaths() / it.scores().playTime()));
+            sendMessage(context.getSource(), format("%s [deaths=%s, playtime=%.2f hours]", it.scores().playerName(),
+                    it.scores().deaths(), it.scores().playTime(), it.scores().deaths() / it.scores().playTime()));
         });
     }
 
