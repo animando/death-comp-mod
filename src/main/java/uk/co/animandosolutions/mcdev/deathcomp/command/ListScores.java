@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import com.mojang.brigadier.context.CommandContext;
 
@@ -75,7 +76,9 @@ public class ListScores implements CommandDefinition {
                         .divide(new BigDecimal(medianPlayTime), MathContext.DECIMAL128).doubleValue();
                 Logger.LOGGER.info("Deaths per playtime : " + averageDeathsPerHour);
 
-                var sortedScores = scores.stream().map(calculatePerformance(averageDeathsPerHour))
+                var playTimeCutoff = medianPlayTime * 0.5;
+                Logger.LOGGER.info(format("Playtime cutoff: %.2f",playTimeCutoff));
+                var sortedScores = scores.stream().filter(playTimeAboveCutoff(playTimeCutoff)).map(calculatePerformance(averageDeathsPerHour))
                         .sorted(new DeltaDeathRateComparator()).toList();
 
                 publishScores(context, sortedScores);
@@ -86,6 +89,10 @@ public class ListScores implements CommandDefinition {
             Logger.LOGGER.error("Error", e);
             return -1;
         }
+    }
+
+    private Predicate<Scores> playTimeAboveCutoff(double playTimeCutoff) {
+        return it -> it.playTime() > playTimeCutoff;
     }
 
     private Function<Scores, ScorePerformance> calculatePerformance(double averageDeathsPerHour) {
